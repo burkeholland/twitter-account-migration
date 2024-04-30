@@ -6,12 +6,14 @@
     "build": "tsc",
     "watch": "tsc -w",
     "clean": "rimraf dist",
-    "prestart": "npm run clean && npm run build && npm run copy-html",
-    "copy-html": "mkdir -p dist/src/functions/templates && cp src/functions/templates/*.html dist/src/functions/templates",
+    "prestart": "npm run clean && npm run compile && npm run build",
     "start": "func start",
-    "test": "echo \"No tests yet...\""
+    "test": "echo \"No tests yet...\"",
+    "compile": "node compile.js",
+    "dev": "NODE_ENV=development npm run start"
   },
   "dependencies": {
+    "@azure/cosmos": "^4.0.0",
     "@azure/functions": "^4.0.0",
     "@types/handlebars": "^4.1.0",
     "handlebars": "^4.7.8"

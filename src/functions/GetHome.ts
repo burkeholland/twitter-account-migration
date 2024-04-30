@@ -1,54 +1,49 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import * as Handlebars from 'handlebars';
-import path = require("path");
-import fs = require("fs");
-
-const homeTemplate: string = fs.readFileSync(path.resolve(__dirname, './templates/home.html'), 'utf8');
-const errorTemplate: string = fs.readFileSync(path.resolve(__dirname, './templates/error.html'), 'utf8');
+import * as templates from './Templates';
+import { URLSearchParams } from 'url';
 
 export async function Home(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-    
-    const clientPrincipalHeader = request.headers['x-ms-client-principal'];
-    
-    if (!clientPrincipalHeader) {
-        return await sendError("The Twitter Client Principal was null.");
-    }
 
-    const clientPrincipal = JSON.parse(Buffer.from(clientPrincipalHeader, 'base64').toString());
+    // Assuming request.query is a string
+    const params = new URLSearchParams(request.query);
 
-    if (clientPrincipal === null) {
-        return await sendError("The Twitter Client Principal was null.");
-    }
+    // You can now use the `params` object to get values from the query string
+    const data = params.get('data') || '';
 
-    const newUserDataJSON = request.query["newUserData"] || '';
-
-    if (!newUserDataJSON) {
+    if (!data) {
         return await sendError("The new user data was null.");
-    }
+    } ``
 
-    const newUser = JSON.parse(newUserDataJSON);
+    const newUser = JSON.parse(data);
 
     if (!newUser.userName || !newUser.identityProvider) {
         return await sendError("The user name or identity provider was null.");
     }
 
-    const data = {
+    const prodUri = process.env["PROD_URI"];
+    const baseUri = process.env["NODE_ENV"] === "development" ? "http://localhost:7071" : prodUri;
+
+    const templateData = {
         newUserName: newUser.userName,
-        newIdentityProvider: newUser.identityProvider
+        newIdentityProvider: newUser.identityProvider,
+        data: data,
+        prodUri: prodUri,
+        baseUri: baseUri
     };
 
-    return await send(200, data);
+    return await send(200, templateData);
 };
 
 async function sendError(message: string): Promise<HttpResponseInit> {
-    return await send(500, { message: message }, errorTemplate);
+    return await send(500, { message: message }, templates.error);
 }
 
-async function send(status: number, data: any, templateSource: string = homeTemplate, ): Promise<HttpResponseInit> {    
+async function send(status: number, data: any, templateSource: string = templates.home,): Promise<HttpResponseInit> {
     const template = Handlebars.compile(templateSource);
     const result = template(data);
     return {
-        status: status, 
+        status: status,
         body: result,
         headers: {
             "Content-Type": "text/html"
@@ -56,7 +51,7 @@ async function send(status: number, data: any, templateSource: string = homeTemp
     };
 }
 
-app.http('GetHome', {
+app.http('home', {
     methods: ['GET', 'POST'],
     authLevel: 'anonymous',
     handler: Home
